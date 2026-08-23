@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+	<title>Move Sheet</title>
+	<style type="text/css">
+		body,input,label,select{font-size: 16pt;width: 110px;}
+    button{font-size: 16pt;background-color: #ccc}
+	</style>
+</head>
+<body>
+  <!-- top:lyr size ?   height:interline   -->
+  <div id="dv1" style="position: absolute;background-color: #aaaa; left:17px;top:225px;width:70px;height:70px;display: block;">
+  &ensp;&ensp;&ensp;<span id="sp2" style="font-size:3em";>></span> 
+  </div>
+  <audio id="audioPlayer" ontimeupdate="GetTime()"></audio>
+	<table  style="background-color: #fff;" border="0">      <!--⏸️ ⏪ 🎵 ➕ ➖  ⏫  ⏬   🐢  ♩   ↡ --> 
+    <tr><td colspan="2">
+      <input id="inputfile" type="file" onchange="loadFile()" hidden>&ensp;
+      <button type="button"onclick="GetFile()">
+        <img src="SheetFolder.ico" style="width: 40px; height: 40px;">
+      </button>
+      &ensp;&ensp;
+      <button onclick="Anim(false)">
+      <span style="font-size:1.5em">⏪</span>
+      </button>&ensp;&ensp;&ensp;&ensp;
+      <button onclick="Anim(true)">
+      <span id="sp1" style="font-size:1.5em">▶️</span>
+      </button>&ensp;&ensp;
+      <input id="inp1" style="width:70px;background-color: #afa;" type="text" value=0>&ensp;&ensp;
+      <button id="BtRc" onclick="SetData()">Time table</button>&ensp;&ensp;&ensp;&ensp;
+      <button id="BtTm" style="background-color:yellow;"onclick="SetTap()">Tap Time</button>&ensp;&ensp;&ensp;&ensp;
+      <button id="BtTp" hidden style="font-size:2em;background-color: #f55" onclick="tpp=true">Tap</button>&ensp;&ensp;&ensp;
+      <span id="sp3"></span>
+      <span style="position:absolute;left:900px;top:30px">By libero51</span>
+    </td></tr>  
+    <tr><td>
+    	<div id="dv0" style="width: 1170px; height: 480px;overflow: auto;">
+        <canvas id="cnv1" width="1150" height="466" style="background-color: #fff;border:1px solid #000; display: block;"></canvas>
+			</div>
+		</td></tr>
+  </table>
+  <div id="dv2" hidden style="position:absolute;top:70px;left:380px;width:380px; height:438px;background-color: #ff0;overflow-y: auto;">
+    <div id="dv5" style="width:360px; height:4200px;">&ensp;
+      <span style="font-size:1.5em">Time table</span>&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;&ensp;
+      <button onclick="Encode()">Save</button><br>&ensp;
+      Yrow&ensp;<button style="font-size:10pt" onclick="ClearY()">Clear</button>&ensp;&ensp;&ensp;&ensp;
+      Time&ensp;<button style="font-size:10pt" onclick="ClearT()">Clear</button>&ensp;
+      &ensp;row 
+      <div id="dv3"></div>
+    </div>
+  </div>  
+<script>
+
+let audioPlayer=document.getElementById("audioPlayer");  
+let filename;
+let speed;
+let inputfile=document.getElementById("inputfile");  
+let fileInput=document.querySelector("input[type=file]");
+let sp1=document.getElementById('sp1');
+let sp2=document.getElementById('sp2');
+let sp3=document.getElementById('sp3');
+let dv1=document.getElementById('dv1');
+let dv0=document.getElementById('dv0');
+let dv2=document.getElementById('dv2');
+let dv3=document.getElementById('dv3');
+let dv5=document.getElementById('dv5');
+let inp1=document.getElementById('inp1');
+let txa; // Array of rows
+let cnv1=document.getElementById('cnv1');
+let ctx1=cnv1.getContext("2d");
+let BtRc=document.getElementById('BtRc');
+let BtTs=document.getElementById('BtTs');
+let BtTp=document.getElementById('BtTp');
+let BtTm=document.getElementById('BtTm');
+let inp0=document.getElementById('inp0');
+let Titsiz,fntTit;
+let Lyrsiz,fntLyr;
+let Chrsiz,fntChr;
+let Uk;     // notazione anglosassone
+let rowN;   // Number of rows
+let ry;     // y row
+let rcc;     // row record count
+let ctm;     //current time
+let dtm;     //current detime 
+let cdu;     //current duration 
+let AiDt;    //ArrayImageData
+let tmp;     //Tempo           semiminima
+let Atm;     //Array Tempo
+let img1;
+let crw="",crb=false;
+let maxY;
+let tap=false;
+let tpp=false;
+let stepY;
+
+
+DatFrm();      
+dv2.scrollTop=0; // non funziona !!!
+
+function DatFrm(){// for 200 beat
+  let s="";
+  for(let i=0;i<400;i+=2){
+    s+=("&ensp;<input id='rd"+i/2+"' type='number' value=0  onfocus='SetRow(this)'>&ensp;");
+    s+="&ensp;&ensp;<input id='re"+i/2+"' type='number' value=0 onclick='SetTim(this)'> &ensp;"+(1+i/2)+"<br>";
+  }
+  dv3.innerHTML=s+"<br><br>";
+}
+
+function SetTim(a){
+  let s=a.id.substring(2);document.getElementById("rd"+s).style.backgroundColor="white";crb=false; 
+}
+
+function SetTap(){
+  if(BtTm.style.backgroundColor=="yellow"){BtTm.style.backgroundColor="#f55";tap=true;BtTp.hidden=false;}
+  else{BtTm.style.backgroundColor="yellow";tap=false;BtTp.hidden=true;} 
+}
+
+function SetRow(n){
+  for(let i=0;i<200;i++){document.getElementById("rd"+i).style.backgroundColor="white"}
+  crw=n.id;
+  document.getElementById(crw).style.backgroundColor="#faa";crb=true;
+}
+
+function SetData(){
+  if(dv2.hidden){dv2.hidden=false}
+  else{          dv2.hidden=true;
+  Convert(filename,true)}  
+}
+
+function GetTime(){ //------------------------------audioPlayer ontimeupdate="GetTime()
+  let t=parseInt(audioPlayer.currentTime*10);
+  if(t!=ctm){ctm=t;dtm++}
+  inp1.value=dtm+">"+document.getElementById("re"+rcc).value
+  if(tap){
+    if(tpp){tpp=false;
+      Scroll(Atm[1][rcc]-200);
+      document.getElementById("re"+rcc).value=dtm;dtm=0;
+      dv2.scrollTop+=30;rcc++}}
+  else{ 
+    if(dtm>Atm[0][rcc]){Scroll(Atm[1][rcc]-200);rcc++;dtm=0;
+      if(Atm[1][rcc-1]>Atm[1][rcc]){           // jump back row
+        dv1.style.backgroundColor="#faaa";
+        sp2.innerHTML="↟"}
+      else{
+        if(Atm[1][rcc]-Atm[1][rcc-1]>stepY){   // jump forward row
+          dv1.style.backgroundColor="#faaa";
+          sp2.innerHTML="↡"}
+        else{
+          dv1.style.backgroundColor="#aaaa";   // next row
+          sp2.innerHTML=">"}}
+  }}
+ // sp3.innerHTML=Atm[1][rcc]+"   "+Atm[1][rcc-1]+" diff:"+(Atm[1][rcc]-Atm[1][rcc-1])+"   stepY:"+stepY  //test
+}
+
+function GetFile(){inputfile.click()}
+
+function loadFile() {
+  dvpos=0;scy=0;crb=false;rcc=0;ctm=0;dtm=0;
+  let file = fileInput.files[0];filename=file.name.replace(".png","");
+  img1 = new Image();
+  img1.onload = function () {
+    let h=cnv1.width/img1.width*img1.height;
+    cnv1.height=h+100;
+    ctx1.drawImage(img1, 0, 0,cnv1.width,h);
+    Decode();
+  } 
+  //--------------------------------------------------canvas events
+  cnv1.addEventListener( 'mousemove', event => {
+  let bb = cnv1.getBoundingClientRect();
+  let x = Math.floor( (event.clientX - bb.left) / bb.width * cnv1.width );
+  let y = Math.floor( (event.clientY - bb.top) / bb.height * cnv1.height );
+  if(crb){document.getElementById(crw).value=y}});
+
+  cnv1.addEventListener( 'click', event => {
+  document.getElementById(crw).style.backgroundColor="white";crb=false});
+  //-------------------------------------------------------
+  // img1.src="Sheet/"+filename+".png"; //  error browser "The operation is insecure" 
+  img1.src=URL.createObjectURL(file);   //  ok  Lara....
+  
+  let reader = new FileReader();
+  reader.addEventListener("load", () => {audioPlayer.src="Mp3/"+filename+".mp3"});
+  if (file) {reader.readAsText(file)}
+  dv0.scrollTop=0;
+  //dv5.scrollTop=0;
+  maxY=0;
+}
+
+function Anim(b){
+  if(b){
+    if(sp1.innerHTML=="▶️"){
+         audioPlayer.play();sp1.innerHTML="⏸️";cdu=parseInt(audioPlayer.duration*10);}
+    else{audioPlayer.pause();sp1.innerHTML="▶️";}
+    }
+  else{
+    audioPlayer.pause();audioPlayer.currentTime=0;sp1.innerHTML="▶️";
+    dvpos=0;dv0.scrollTop=dvpos;
+  }  
+}
+
+function Convert(filename,b){
+  let s="",v="           ",u,c=-1,z=false;
+  let t=txa;
+  for(let i=0;i<t.length;i++){
+    z=!z;if(z){c++}
+    if(b&&AiDt[c]){u=AiDt[c].toString()}                 //Time set   
+    else{u=(i*2500).toString();}                     //Time default
+    if(z){u+=v.substr(0,8-u.length)+"|"+t[i]+"\n"}   //Chords
+    else {u="        |"+t[i]+"\n"}                   //Lyrics
+    s+=u;
+  }
+  SaveTxt(s,"text",filename+".txt");
+}
+
+
+function SaveTxt(text, fileType, fileName) {
+  var blob = new Blob([text], { type: fileType });
+  var a = document.createElement('a');
+  a.download = fileName;
+  a.href = URL.createObjectURL(blob);
+  a.dataset.downloadurl = [fileType, a.download, a.href].join(':');
+  a.style.display = "none";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function() { URL.revokeObjectURL(a.href); }, 1500);
+}
+
+function Scroll(t){
+  let d=2000;
+  if(Atm[0][rcc]==0){d=100}
+  if(dv0.scrollTop>t){d=500}
+  smooth_scroll_to(dv0,t,d) //     3000 time scroll line
+}
+
+function smooth_scroll_to(element, target, duration) {      // based on http://en.wikipedia.org/wiki/Smoothstep
+  target = Math.round(target);
+  duration = Math.round(duration);
+  if (duration < 0) {return Promise.reject("bad duration");}
+  if (duration === 0) {element.scrollTop = target;return Promise.resolve();}
+  var start_time = Date.now();
+  var end_time = start_time + duration;
+  var start_top = element.scrollTop;
+  var distance = target - start_top;
+  var smooth_step = function(start, end, point) {
+    if(point <= start) { return 0; }
+    if(point >= end) { return 1; }
+    var x = (point - start) / (end - start); // interpolation
+    return x*x*(3 - 2*x);
+  }
+  return new Promise(function(resolve, reject) {
+    // This is to keep track of where the element's scrollTop is
+    // supposed to be, based on what we're doing
+    var previous_top = element.scrollTop;
+    // This is like a think function from a game loop
+    var scroll_frame = function() {
+      if(element.scrollTop != previous_top) {
+          reject("interrupted");
+          return;
+      }
+
+      // set the scrollTop for this frame
+      var now = Date.now();
+      var point = smooth_step(start_time, end_time, now);
+      var frameTop = Math.round(start_top + (distance * point));
+      element.scrollTop = frameTop;
+      // check if we're done!
+      if(now >= end_time) {resolve();return;}
+      // If we were supposed to scroll but didn't, then we
+      // probably hit the limit, so consider it done; not
+      // interrupted.
+      if(element.scrollTop === previous_top
+        && element.scrollTop !== frameTop) {
+        resolve();
+        return;
+      }
+      previous_top = element.scrollTop;
+      // schedule next frame for execution
+      setTimeout(scroll_frame, 0);
+    }
+    setTimeout(scroll_frame, 0);
+  });
+}
+
+Decode=()=>{
+  let b=true; // 
+  let y,t=0;
+  Atm=[[],[]];
+  AiDt=ctx1.getImageData(0,0,300,1).data;
+  ctx1.font="20px arial";
+  for(let i=0;i<200;i++){
+    y=AiDt[i*4]*256+AiDt[i*4+1];               // 2 bytes
+    document.getElementById("rd"+i).value=y;
+    t=AiDt[i*4+2];                             // 1 byte
+    document.getElementById("re"+i).value=t;
+    if(y>0){                         
+      if(y<maxY){b=false}            
+      if(b){ctx1.fillText(i,20,y)}   // draw number row (evita ripetizioni indietro)          
+      Atm[0].push(t);           //time
+      Atm[1].push(y);maxY=y}}   // Y 
+  stepY=parseInt(Atm[1][5]/5)
+  GetTime();
+}
+
+
+Encode=()=>{           
+  let y,t;
+  let imd=ctx1.createImageData(1,1);
+  ctx1.fillStyle = "black";
+  for(let i=0;i<200;i++){                           // salta prologo
+    y=document.getElementById("rd"+i).value;
+    t=document.getElementById("re"+i).value;
+    y=dechex(y);
+    imd.data[0]=y[0];                  //Yrow low
+    imd.data[1]=y[1];                  //Yrow hight
+    imd.data[2]=t;                     //time ...< 256 1 byte
+    imd.data[3]=255;                   //alpha ... always 255
+    ctx1.putImageData(imd,i,0);
+  }
+  ctx1.clearRect(18,18,30,cnv1.height); // remove rows number
+  DownloadImage();
+}
+
+function dechex(i) {
+let h,d=[];  
+let s="0000"; 
+h=(Number(i).toString(16));
+h=s.substring(0,4-h.length)+h;
+d[0]=Number("0x"+h.substring(0,2));
+d[1]=Number("0x"+h.substring(2,4));
+return d;
+}
+
+DownloadImage = () => {
+    let downloadLink = document.createElement('a');
+    downloadLink.setAttribute('download', filename+'.png');
+    let dataURL = cnv1.toDataURL('image/png');
+    let url = dataURL.replace(/^data:image\/png/,'data:application/octet-stream');
+    downloadLink.setAttribute('href', url);
+    downloadLink.click();
+}
+
+
+ClearData=()=>{
+  for(let i=0;i<200;i++){
+    document.getElementById('rd'+i).value=0;
+    document.getElementById('re'+i).value=0;
+  }
+}
+
+function ClearY(){
+  if(confirm("Clear the Yrow column ?")){
+    for(let i=0;i<200;i++){document.getElementById('rd'+i).value=0;}
+  }
+}
+
+function ClearT(){
+  if(confirm("Clear the Time column ?")){
+    for(let i=0;i<200;i++){document.getElementById('re'+i).value=0;}
+  }
+}
+
+
+
+</script>
+</body>
+</html>
